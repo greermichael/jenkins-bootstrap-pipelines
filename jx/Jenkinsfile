@@ -53,7 +53,6 @@ pipeline {
                 dir("ops/$AWS_REGION/env") {
                     withProxyEnv() {
                         writeFile file: 'helm-rbac-config.yaml', text: helmRbacConfig
-                        sh 'helm repo update'
                         sh 'kubectl create -f helm-rbac-config.yaml ||true'
                         sh 'helm init --service-account tiller --wait --upgrade'
                     }
@@ -76,7 +75,7 @@ pipeline {
                     withProxyEnv() {
                         script {
                             def parameters = readYaml file: 'jenkins/parameters.yaml'
-                            sh 'jx create git server bitbucketserver -n BitBucket ' + parameters.gitBitbucketServer
+                            sh 'jx create git server --kind bitbucketserver --name BitBucket --url ' + parameters.gitBitbucketServer
                         }
                     }
                 }
