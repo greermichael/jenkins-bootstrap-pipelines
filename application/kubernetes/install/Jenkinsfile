@@ -133,7 +133,7 @@ pipeline {
                             
                             # DESTROY:
                             #terraform destroy -auto-approve
-                            #kops --state s3://kops-state-${PRODUCT_DOMAIN_NAME}-${ENVIRONMENT_TYPE}.k8s.local delete cluster ${PRODUCT_DOMAIN_NAME}-${ENVIRONMENT_TYPE}.k8s.local --yes
+                            #kops --state s3://kops-${AWS_ACCOUNT_NUMBER}-${AWS_REGION}-${PRODUCT_DOMAN_NAME}-${ENVIRONMENT_TYPE} delete cluster ${PRODUCT_DOMAIN_NAME}-${ENVIRONMENT_TYPE}.k8s.local --yes
 
                             popd
                             popd
