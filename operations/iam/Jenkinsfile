@@ -41,7 +41,7 @@ pipeline {
                 dir("operations/$AWS_REGION/iam") {
                     ansiColor('xterm') {
                         withProxyEnv() {
-                            sh '/usr/bin/terraform apply -var-file="../terraform.tfvars" -input=false tfplan'
+                            sh '/usr/bin/terraform apply -input=false tfplan'
                         }
                     }
                     archiveArtifacts artifacts: 'outputs/**'

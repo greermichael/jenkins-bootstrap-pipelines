@@ -129,7 +129,7 @@ pipeline {
                             pushd application/${AWS_REGION}/env
 
                             # CREATE:
-                            terraform apply -input=false -var-file="../terraform.tfvars" tfplan
+                            terraform apply -input=false tfplan
                             
                             # DESTROY:
                             #terraform destroy -auto-approve

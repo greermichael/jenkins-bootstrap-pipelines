@@ -44,7 +44,7 @@ pipeline {
                 dir("operations/$AWS_REGION/env") {
                     ansiColor('xterm') {
                         withProxyEnv() {
-                            sh '/usr/bin/terraform apply -var-file="../terraform.tfvars" -input=false tfplandestroy'
+                            sh '/usr/bin/terraform apply -input=false tfplandestroy'
                         }
                     }
                 }
