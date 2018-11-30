@@ -50,7 +50,7 @@ pipeline {
         }
         stage('Init helm') {
             steps {
-                dir("ops/$AWS_REGION/env") {
+                dir("operations/$AWS_REGION/env") {
                     withProxyEnv() {
                         writeFile file: 'helm-rbac-config.yaml', text: helmRbacConfig
                         sh 'kubectl create -f helm-rbac-config.yaml ||true'
@@ -61,7 +61,7 @@ pipeline {
         }
         stage('Init k8s ingress') {
             steps {
-                dir("ops/$AWS_REGION/env") {
+                dir("operations/$AWS_REGION/env") {
                     withProxyEnv() {
                         writeFile file: 'ing-values.yaml', text: ingValue
                         sh 'helm install --wait --name jxing --namespace kube-system stable/nginx-ingress --set rbac.create=true --values ing-values.yaml||true'
@@ -71,7 +71,7 @@ pipeline {
         }
         stage('Init jx tool') {
             steps {
-                dir("ops/$AWS_REGION/env") {
+                dir("operations/$AWS_REGION/env") {
                     withProxyEnv() {
                         script {
                             def parameters = readYaml file: 'jenkins/parameters.yaml'
@@ -88,7 +88,7 @@ pipeline {
         }
         stage('Install jx on k8s') {
             steps {
-                dir("ops/$AWS_REGION/env") {
+                dir("operations/$AWS_REGION/env") {
                     ansiColor('xterm') {
                         withProxyEnv() {
                             script {
