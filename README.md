@@ -22,11 +22,11 @@ This pipeline job will generate account specific iam policies for project Kentri
 
 ##### auto 
 
-This job handle s3 state and create policies on account
+This job creates IAM policies on AWS account and updates Terraform state.
 
 ##### manual
 
-This job do not use remote state and only generate policy files 
+This job only generates local json files for policies and does not update Terraform state.
 
 ### kubernetes
 
