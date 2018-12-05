@@ -15,7 +15,9 @@ pipeline {
                 dir("operations/$AWS_REGION/iam") {
                     withProxyEnv() {
                         sshagent(['bitbucket-key']) {
-                            sh '/usr/bin/terraform init -input=false'
+                            sh '''#!/bin/bash -x
+                            terraform init -input=false 
+                            '''
                         }
                     }
                 }

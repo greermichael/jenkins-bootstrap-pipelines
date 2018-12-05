@@ -20,6 +20,14 @@ Job need be run on node with installed:
 
 This pipeline job will generate account specific iam policies for project Kentrikos.
 
+##### auto 
+
+This job handle s3 state and create policies on account
+
+##### manual
+
+This job do not use remote state and only generate policy files 
+
 ### kubernetes
 
 This pipeline job will install kubernetes cluster using terraform.
