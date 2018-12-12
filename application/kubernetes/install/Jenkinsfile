@@ -1,7 +1,7 @@
 pipeline {
     parameters {
         string(name: 'PRODUCT_DOMAIN_NAME', defaultValue: '')
-        string(name: 'ENVIRONMENT_NAME', defaultValue: '')
+        string(name: 'ENVIRONMENT_TYPE', defaultValue: '')
         string(name: 'CONFIG_REPO_URL', defaultValue: '')
         string(name: 'CONFIG_REPO_DIR', defaultValue: '')
         string(name: 'AWS_ACCOUNT_NUMBER', defaultValue: '')
