@@ -132,8 +132,8 @@ pipeline {
                             terraform apply -input=false tfplan
                             
                             # DESTROY:
-                            #terraform destroy -auto-approve
-                            #kops --state s3://kops-${AWS_ACCOUNT_NUMBER}-${AWS_REGION}-${PRODUCT_DOMAN_NAME}-${ENVIRONMENT_TYPE} delete cluster ${PRODUCT_DOMAIN_NAME}-${ENVIRONMENT_TYPE}.k8s.local --yes
+                            #terraform destroy -var-file="../terraform.tfvars" -auto-approve
+                            #kops --state s3://kops-${AWS_ACCOUNT_NUMBER}-${AWS_REGION}-${PRODUCT_DOMAIN_NAME}-${ENVIRONMENT_TYPE} delete cluster ${PRODUCT_DOMAIN_NAME}-${ENVIRONMENT_TYPE}.k8s.local --yes
 
                             popd
                             popd
