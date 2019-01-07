@@ -135,7 +135,7 @@ pipeline {
                                 writeYaml file: 'data.yaml', data: jxValueMap
                                 writeFile file: 'convert.py', text: converterPy
                                 sh 'python -u convert.py'
-                                // This next line is to change in file myvalues.yaml from \\n to \n and we need sed with s/\\\\/\\/g as a result of interpolation.
+                                // This next line is to change in file myvalues.yaml from \\n to \n and we need sed with s/\\\\/\\/g written as below due to interpolation done by groovy.
                                 sh 'sed -i "s/\\\\\\\\\\\\\\\\/\\\\\\\\/g" myvalues.yaml '
                                 sh 'jx install -b --headless --default-admin-password ' + parameters.defaultAdminPassword + ' --domain="' + parameters.jxDomain + '" --verbose=true --provider=kubernetes --no-default-environments --git-username=' + parameters.gitUsername + ' --git-api-token ' + parameters.gitApiToken + ' --git-provider-url="' + parameters.gitProviderUrl + '"'                            }
                         }
