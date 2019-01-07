@@ -126,16 +126,17 @@ pipeline {
                         withProxyEnv() {
                             script {
                                 def parameters = readYaml file: 'jenkins/parameters.yaml'
-                                jxValueMap.jenkins.Master.InitContainerEnv = [[name: 'http_proxy', value: env.http_proxy],[name: 'http_proxy', value: env.http_proxy],[name: 'no_proxy', value: env.no_proxy]]
-                                jxValueMap.jenkins.Master.ContainerEnv = [[name: 'http_proxy', value: env.http_proxy],[name: 'http_proxy', value: env.http_proxy],[name: 'no_proxy', value: env.no_proxy]]
                                 URI url_http_proxy = new URI(env.http_proxy)
                                 URI url_https_proxy = new URI(env.https_proxy)
+                                def jenkins_no_proxy =  env.no_proxy.toString()
+                                jxValueMap.jenkins.Master.InitContainerEnv = [[name: 'http_proxy', value: env.http_proxy],[name: 'https_proxy', value: env.http_proxy],[name: 'no_proxy', value: env.no_proxy],[name: 'jenkins_proxy_http', value: url_http_proxy?.getHost()],[name: 'jenkins_proxy_http_port', value:  url_http_proxy?.getPort().toString()],[name: 'jenkins_no_proxy_list', value: jenkins_no_proxy.split(',').join('\\n')]]
+                                jxValueMap.jenkins.Master.ContainerEnv = [[name: 'http_proxy', value: env.http_proxy],[name: 'https_proxy', value: env.http_proxy],[name: 'no_proxy', value: env.no_proxy],[name: 'jenkins_proxy_http', value: url_http_proxy?.getHost()],[name: 'jenkins_proxy_http_port', value:  url_http_proxy?.getPort().toString()],[name: 'jenkins_no_proxy_list', value: jenkins_no_proxy.split(',').join('\\n')]]
                                 jxValueMap.jenkins.Master.JavaOpts='-Dhudson.slaves.NodeProvisioner.initialDelay=0 -Dhudson.slaves.NodeProvisioner.MARGIN=50 -Dhudson.slaves.NodeProvisioner.MARGIN0=0.85 -Djenkins.displayurl.provider=org.jenkinsci.plugins.blueoceandisplayurl.BlueOceanDisplayURLImpl -Dhttp.proxyHost='+ url_http_proxy?.getHost()+' -Dhttp.proxyPort='+ url_http_proxy?.getPort()
                                 writeYaml file: 'data.yaml', data: jxValueMap
                                 writeFile file: 'convert.py', text: converterPy
                                 sh 'python -u convert.py'
-                                sh 'jx install -b --headless --default-admin-password ' + parameters.defaultAdminPassword + ' --domain="' + parameters.jxDomain + '" --verbose=true --provider=kubernetes --no-default-environments --git-username=' + parameters.gitUsername + ' --git-api-token ' + parameters.gitApiToken + ' --git-provider-url="' + parameters.gitProviderUrl + '"'
-                            }
+                                sh 'sed -i "s/\\\\\\\\\\\\\\\\/\\\\\\\\/g" myvalues.yaml '
+                                sh 'jx install -b --headless --default-admin-password ' + parameters.defaultAdminPassword + ' --domain="' + parameters.jxDomain + '" --verbose=true --provider=kubernetes --no-default-environments --git-username=' + parameters.gitUsername + ' --git-api-token ' + parameters.gitApiToken + ' --git-provider-url="' + parameters.gitProviderUrl + '"'                            }
                         }
                     }
                 }
