@@ -71,7 +71,6 @@ pipeline {
                     withCustomEnv() {
                         sshagent(['bitbucket-key']) {
                             sh '''#!/bin/bash -x
-                            pushd ${CONFIG_REPO_DIR}
                             pushd application/${AWS_REGION}/env
                             terraform init \
                                 -backend-config=\"region=${AWS_REGION}\" \
