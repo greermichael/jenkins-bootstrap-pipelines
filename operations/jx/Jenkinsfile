@@ -181,7 +181,7 @@ void withProxyEnv(List envVars = [], def body) {
             if (env.PROXY_HTTP) {
                 proxies << "http_proxy=$PROXY_HTTP"
             }
-            if (env.PROXY_HTTPs) {
+            if (env.PROXY_HTTPS) {
                 proxies << "https_proxy=$PROXY_HTTPS"
             }
             if (env.PROXY_NO) {
@@ -191,7 +191,6 @@ void withProxyEnv(List envVars = [], def body) {
         }
     }
     envVaraibles.addAll(envVars)
-
     withEnv(envVaraibles) {
         body.call()
     }
