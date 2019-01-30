@@ -158,7 +158,7 @@ void withCustomEnv(List envVars = [],  def body) {
     List envVariables = [
         'GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no'
     ]
-    withAWSParameterStore(credentialsId: '', namePrefixes: '', naming: 'absolute', path: '/proxy', recursive: true, regionName: "${params.AWS_REGION}") {
+    withAWSParameterStore(credentialsId: '', namePrefixes: '', naming: 'absolute', path: '/proxy', recursive: true, regionName: "$AWS_REGION") {
         script {
             if (env.PROXY_HTTP) {
                 proxies << "http_proxy=$PROXY_HTTP"
