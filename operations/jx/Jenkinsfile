@@ -37,11 +37,10 @@ controller:
 def jxValueMap = [
         jenkins: [
                 Master: [
-                        Image: env.AWS_OPERATIONS_ACCOUNT_NUMBER + ".dkr.ecr."+ env.AWS_REGION + ".amazonaws.com/jenkins-x-image",
+                        Image: env.AWS_OPERATIONS_ACCOUNT_NUMBER + ".dkr.ecr."+ env.AWS_REGION + ".amazonaws.com/"+ env.PRODUCT_DOMAIN_NAME + "-" + env.ENVIRONMENT_TYPE +"jenkins-x-image",
                         ImageTag: "latest",
                         InitContainerEnv: [],
-                        ContainerEnv:[],
-                        InstallPlugins: ["ssh-agent:1.17","aws-parameter-store:1.2.1"]
+                        ContainerEnv:[]
                 ],
                 Servers: [
                         Global: [

@@ -19,7 +19,7 @@ pipeline {
         stage('Tag') {
             steps {
                 withProxyEnv() {
-                    sh 'docker tag jenkins-x-kentrikos $AWS_OPERATIONS_ACCOUNT_NUMBER.dkr.ecr.$AWS_REGION.amazonaws.com/jenkins-x-image'
+                    sh 'docker tag jenkins-x-kentrikos $AWS_OPERATIONS_ACCOUNT_NUMBER.dkr.ecr.$AWS_REGION.amazonaws.com/${PRODUCT_DOMAIN_NAME}-${ENVIRONMENT_TYPE}-jenkins-x-image'
 
                 }
             }
@@ -28,7 +28,7 @@ pipeline {
             steps {
                 withProxyEnv() {
                     sh 'eval $(aws ecr get-login --no-include-email --region $AWS_REGION | sed "s|https://||")'
-                    sh 'docker push  $AWS_OPERATIONS_ACCOUNT_NUMBER.dkr.ecr.$AWS_REGION.amazonaws.com/jenkins-x-image'
+                    sh 'docker push  $AWS_OPERATIONS_ACCOUNT_NUMBER.dkr.ecr.$AWS_REGION.amazonaws.com/${PRODUCT_DOMAIN_NAME}-${ENVIRONMENT_TYPE}-jenkins-x-image'
                 }
             }
         }
