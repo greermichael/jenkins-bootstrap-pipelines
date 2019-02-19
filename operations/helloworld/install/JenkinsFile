@@ -93,7 +93,7 @@ pipeline {
                             println "Getting domain name"
                             def r53DomainName = sh(script: "aws route53 get-hosted-zone --id " + parameters.jxDomainHostedZoneID + " --output text --query 'HostedZone.Name'", 
                                                    returnStdout: true).trim().replaceAll("\\.\$", "")
-                            r53fqdn = "mrt-demo" + "." + r53DomainName
+                            r53fqdn = "helloworld" + "." + r53DomainName
                             
                             sleep 2
                             
