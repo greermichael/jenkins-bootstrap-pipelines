@@ -1,76 +1,54 @@
 #!groovy
-
 import groovy.json.JsonOutput
-
-def helmRbacConfig = '''
+def serviceConfig = '''
 apiVersion: v1
-kind: ServiceAccount
+kind: Service
 metadata:
-  name: tiller
-  namespace: kube-system
----
-apiVersion: rbac.authorization.k8s.io/v1beta1
-kind: ClusterRoleBinding
+  name: k8s-python
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-internal: 0.0.0.0/
+  labels:
+    app: k8s-python
+    name: k8s-python
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8081
+  selector:
+    app: k8s-python
+'''
+def deploymentConfig = '''
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: tiller
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:
-  - kind: ServiceAccount
-    name: tiller
-    namespace: kube-system
-'''
-def ingValue = '''
-rbac:
- create: true
-
-controller:
- service:
-   annotations:
-     service.beta.kubernetes.io/aws-load-balancer-type: nlb
-     service.beta.kubernetes.io/aws-load-balancer-internal: true
-   enableHttp: true
-   enableHttps: false
-'''
-def jxValueMap = [
-        jenkins: [
-                Master: [
-                        Image: env.AWS_OPERATIONS_ACCOUNT_NUMBER + ".dkr.ecr."+ env.AWS_REGION + ".amazonaws.com/jenkins-x-image",
-                        ImageTag: "latest",
-                        InitContainerEnv: [],
-                        ContainerEnv:[],
-                        InstallPlugins: ["ssh-agent:1.17","aws-parameter-store:1.2.1"]
-                ],
-                Servers: [
-                        Global: [
-                                NumEnvVars: 8,
-                                EnvVars   : [
-                                        CONFIG_REPO_URL               : env.CONFIG_REPO_URL,
-                                        JOB_REPO_URL                  : env.JOB_REPO_URL,
-                                        AWS_REGION                    : env.AWS_REGION,
-                                        AWS_OPERATIONS_ACCOUNT_NUMBER : env.AWS_OPERATIONS_ACCOUNT_NUMBER,
-                                        AWS_APPLICATION_ACCOUNT_NUMBER: env.AWS_APPLICATION_ACCOUNT_NUMBER,
-                                        PRODUCT_DOMAIN_NAME           : env.PRODUCT_DOMAIN_NAME,
-                                        ENVIRONMENT_TYPE              : env.ENVIRONMENT_TYPE,
-
-                                ]
-                        ]
-                ]
-        ]
-]
-
-def converterPy = '''
-import yaml
-import io
-with open("data.yaml", 'r') as stream:
-   data_loaded = yaml.load(stream)
-with io.open('myvalues.yaml', 'w', encoding='utf8') as outfile:
-   yaml.dump(data_loaded, outfile, default_flow_style=False, default_style='"')
+  name: k8s-python
+  labels:
+    app: k8s-python
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: k8s-python
+  template:
+    metadata:
+      labels:
+        app: k8s-python
+    spec:
+      containers:
+      - name: k8s-python
+        image: 090011926616.dkr.ecr.us-east-1.amazonaws.com/demo_eks_python_webserver:latest
+        imagePullPolicy: "Always"
+        resources:
+          limits:
+            cpu: 400m
+            memory: 200Mi
+          requests:
+            cpu: 20m
+            memory: 100M
+        ports:
+        - containerPort: 8081
 '''
 pipeline {
-
     agent any
     stages {
         stage('Git local config') {
@@ -85,23 +63,22 @@ pipeline {
                 git credentialsId: 'bitbucket-key', url: '$CONFIG_REPO_URL'
             }
         }
-        stage('Init helm') {
+        stage('Create Service') {
             steps {
                 dir("operations/$AWS_REGION/env") {
                     withProxyEnv() {
-                        writeFile file: 'helm-rbac-config.yaml', text: helmRbacConfig
-                        sh 'kubectl create -f helm-rbac-config.yaml ||true'
-                        sh 'helm init --service-account tiller --wait --upgrade'
+                        writeFile file: 'demo_service.yaml', text: serviceConfig
+                        sh 'kubectl create -f demo_service.yaml ||true'
                     }
                 }
             }
         }
-        stage('Init k8s ingress') {
+        stage('Create Deployment') {
             steps {
                 dir("operations/$AWS_REGION/env") {
                     withProxyEnv() {
-                        writeFile file: 'ing-values.yaml', text: ingValue
-                        sh 'helm install --replace --wait --name jxing --namespace kube-system stable/nginx-ingress --set rbac.create=true --values ing-values.yaml||true'
+                        writeFile file: 'demo_deployment.yaml', text: deploymentConfig
+                        sh 'kubectl create -f demo_deployment.yaml ||true'
                     }
                 }
             }
@@ -112,69 +89,40 @@ pipeline {
                     withProxyEnv() {
                         script {
                             def parameters = readYaml file: 'jenkins/parameters.yaml'
-
                             println "Getting domain name"
                             def r53DomainName = sh(script: "aws route53 get-hosted-zone --id " + parameters.jxDomainHostedZoneID + " --output text --query 'HostedZone.Name'", 
                                                    returnStdout: true).trim().replaceAll("\\.\$", "")
-                            r53WildcardRecordName = "*." + parameters.jxDomainAliasPrefix + "." + r53DomainName
-
+                            r53fqdn = "mrt-demo" + "." + r53DomainName
+                            
+                            sleep 2
+                            
                             println "Getting ingress NLB information"
-                            ingressNLBAddress = sh(script: "kubectl get service -n kube-system jxing-nginx-ingress-controller -o json | jq -r '.status.loadBalancer.ingress[0].hostname'",
+                            ingressNLBAddress = sh(script: "kubectl get service k8s-python -o json | jq -r '.status.loadBalancer.ingress[0].hostname'",
                                                    returnStdout: true).trim()
-                            ingressNLBHostedZoneID = sh(script: "aws --region \$AWS_REGION elbv2 describe-load-balancers --query 'LoadBalancers[?DNSName==`" + ingressNLBAddress + "`].CanonicalHostedZoneId' --output text",
+                            ingressNLBHostedZoneID = sh(script: "aws --region us-east-1 elb describe-load-balancers --output json | jq -r '.LoadBalancerDescriptions[0].CanonicalHostedZoneNameID'",
                                                    returnStdout: true).trim()
-
                             println "Generating record for DNS update"
-                            def r53WildcardRecordJSON = """
+                            def r53RecordJSON = """
                             {
                                 "Comment": "Creating Alias resource record sets in Route 53",
                                 "Changes": [{
                                     "Action": "UPSERT",
                                     "ResourceRecordSet": {
-                                        "Name": "${r53WildcardRecordName}",
+                                        "Name": "${r53fqdn}",
                                         "Type": "A",
                                         "AliasTarget": {
                                             "HostedZoneId": "${ingressNLBHostedZoneID}",
-                                            "DNSName": "${ingressNLBAddress}",
+                                            "DNSName": "dualstack.${ingressNLBAddress}",
                                             "EvaluateTargetHealth": false
                                         }
                                     }
                                 }]
                             }
                             """
-                            writeFile file: 'jx_r53_alias.json', text: r53WildcardRecordJSON
-                            sh "cat jx_r53_alias.json"
-
+                            writeFile file: 'r53_alias.json', text: r53RecordJSON
+                            sh "cat r53_alias.json"
                             println "Creating/updating Route53 entry"
-                            sh "aws route53 change-resource-record-sets --hosted-zone-id " + parameters.jxDomainHostedZoneID + " --change-batch file://jx_r53_alias.json"
-                        }
-                    }
-                }
-            }
-        }
-        stage('Install Helloworld on cluster') {
-            steps {
-                dir("operations/$AWS_REGION/env") {
-                    ansiColor('xterm') {
-                        withProxyEnv() {
-                            script {
-                                def parameters = readYaml file: 'jenkins/parameters.yaml'
-
-                                println "Getting domain name"
-                                def r53DomainName = sh(script: "aws route53 get-hosted-zone --id " + parameters.jxDomainHostedZoneID + " --output text --query 'HostedZone.Name'", 
-                                                       returnStdout: true).trim().replaceAll("\\.\$", "")
-                                
-                                URI url_http_proxy = new URI(env.http_proxy)
-                                URI url_https_proxy = new URI(env.https_proxy)
-                                def jenkins_no_proxy =  env.no_proxy.toString()
-                                jxValueMap.jenkins.Master.InitContainerEnv = [[name: 'http_proxy', value: env.http_proxy],[name: 'https_proxy', value: env.http_proxy],[name: 'no_proxy', value: env.no_proxy],[name: 'jenkins_proxy_http', value: url_http_proxy?.getHost()],[name: 'jenkins_proxy_http_port', value:  url_http_proxy?.getPort().toString()],[name: 'jenkins_no_proxy_list', value: jenkins_no_proxy.split(',').join('\\n')],[name: 'JOB_REPO_URL', value: env.JOB_REPO_URL]]
-                                jxValueMap.jenkins.Master.ContainerEnv = [[name: 'http_proxy', value: env.http_proxy],[name: 'https_proxy', value: env.http_proxy],[name: 'no_proxy', value: env.no_proxy],[name: 'jenkins_proxy_http', value: url_http_proxy?.getHost()],[name: 'jenkins_proxy_http_port', value:  url_http_proxy?.getPort().toString()],[name: 'jenkins_no_proxy_list', value: jenkins_no_proxy.split(',').join('\\n')],[name: 'JOB_REPO_URL', value: env.JOB_REPO_URL]]
-                                jxValueMap.jenkins.Master.JavaOpts='-Dhudson.slaves.NodeProvisioner.initialDelay=0 -Dhudson.slaves.NodeProvisioner.MARGIN=50 -Dhudson.slaves.NodeProvisioner.MARGIN0=0.85 -Djenkins.displayurl.provider=org.jenkinsci.plugins.blueoceandisplayurl.BlueOceanDisplayURLImpl -Dhttp.proxyHost='+ url_http_proxy?.getHost()+' -Dhttp.proxyPort='+ url_http_proxy?.getPort()
-                                writeYaml file: 'myvalues.yaml', data: jxValueMap
-                              //  writeFile file: 'convert.py', text: converterPy
-                             //   sh 'python -u convert.py'
-                              //  sh 'sed -i "s/\\\\\\\\\\\\\\\\/\\\\\\\\/g" myvalues.yaml '
-                                sh 'jx install -b --headless --default-admin-password ' + parameters.defaultAdminPassword + ' --domain="' + parameters.jxDomainAliasPrefix + "." + r53DomainName + '" --verbose=true --provider=kubernetes --no-default-environments --git-username=' + parameters.gitUsername + ' --git-api-token ' + parameters.gitApiToken + ' --git-provider-url="' + parameters.gitProviderUrl + '"'                            }
+                            sh "aws route53 change-resource-record-sets --hosted-zone-id " + parameters.jxDomainHostedZoneID + " --change-batch file://r53_alias.json"
                         }
                     }
                 }
@@ -182,7 +130,6 @@ pipeline {
         }
     }
 }
-
 void withProxyEnv(List envVars = [], def body) {
     List proxies = []
     List envVaraibles = ['GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no']
