@@ -53,6 +53,17 @@ pipeline {
                 }
             }
         }
+        stage('Validate') {
+            steps {
+                dir("common/cluster-validation") {
+                    ansiColor('xterm') {
+                        withProxyEnv() {
+                            sh '/usr/bin/terraform apply -var-file="../../operations/${AWS_REGION}/terraform.tfvars" -input=false -auto-approve'
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 void withProxyEnv(List envVars = [],  def body) {
