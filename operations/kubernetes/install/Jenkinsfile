@@ -58,7 +58,8 @@ pipeline {
                 dir("common/cluster-validation") {
                     ansiColor('xterm') {
                         withProxyEnv() {
-                            sh '/usr/bin/terraform apply -var-file="../../operations/${AWS_REGION}/terraform.tfvars" -input=false -auto-approve'
+                            sh 'terraform init -input=false && \
+                            /usr/bin/terraform apply -var-file="../../operations/${AWS_REGION}/terraform.tfvars" -input=false -auto-approve'
                         }
                     }
                 }
