@@ -51,6 +51,12 @@ pipeline {
                             sh '''#!/bin/bash -x
                             pushd ${CONFIG_REPO_DIR}
                             pushd application/${AWS_REGION}/env
+
+                            assumed_role=$(aws sts assume-role --role-arn ${CROSS_ACCOUNT_ROLE_ARN} --role-session-name cross-account-session)
+                            export AWS_ACCESS_KEY_ID=$(echo $assumed_role | jq -r .Credentials.AccessKeyId)
+                            export AWS_SECRET_ACCESS_KEY=$(echo $assumed_role | jq -r .Credentials.SecretAccessKey)
+                            export AWS_SESSION_TOKEN=$(echo $assumed_role | jq -r .Credentials.SessionToken)
+
                             terraform init \
                                 -backend-config=\"region=${AWS_REGION}\" \
                                 -backend-config=\"bucket=tf-state-bootstrap-${AWS_APPLICATION_ACCOUNT_NUMBER}-application-${AWS_REGION}\" \
@@ -69,6 +75,11 @@ pipeline {
                         sshagent(['bitbucket-key']) {
                             sh '''#!/bin/bash -x
                             pushd application/${AWS_REGION}/env
+
+                            assumed_role=$(aws sts assume-role --role-arn ${CROSS_ACCOUNT_ROLE_ARN} --role-session-name cross-account-session)
+                            export AWS_ACCESS_KEY_ID=$(echo $assumed_role | jq -r .Credentials.AccessKeyId)
+                            export AWS_SECRET_ACCESS_KEY=$(echo $assumed_role | jq -r .Credentials.SecretAccessKey)
+                            export AWS_SESSION_TOKEN=$(echo $assumed_role | jq -r .Credentials.SessionToken)
 
                             terraform plan -out=tfplan -var-file="../terraform.tfvars" -input=false
                             popd
@@ -90,6 +101,11 @@ pipeline {
                         sshagent(['bitbucket-key']) {
                             sh '''#!/bin/bash -x
                             pushd application/${AWS_REGION}/env
+
+                            assumed_role=$(aws sts assume-role --role-arn ${CROSS_ACCOUNT_ROLE_ARN} --role-session-name cross-account-session)
+                            export AWS_ACCESS_KEY_ID=$(echo $assumed_role | jq -r .Credentials.AccessKeyId)
+                            export AWS_SECRET_ACCESS_KEY=$(echo $assumed_role | jq -r .Credentials.SecretAccessKey)
+                            export AWS_SESSION_TOKEN=$(echo $assumed_role | jq -r .Credentials.SessionToken)
 
                             # CREATE:
                             terraform apply -input=false tfplan
