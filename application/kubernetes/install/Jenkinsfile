@@ -10,9 +10,9 @@ pipeline {
                         pwd
                         pip install awscli --upgrade
                         
-                        wget -O kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep tag_name | cut -d '"' -f 4)/kops-linux-amd64
-                        chmod +x ./kops
-                        mv ./kops /usr/local/bin/
+                        #wget -O kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep tag_name | cut -d '"' -f 4)/kops-linux-amd64
+                        #chmod +x ./kops
+                        #mv ./kops /usr/local/bin/
                         
                         yum --disableplugin=fastestmirror install -y jq
                         
@@ -20,7 +20,7 @@ pipeline {
                         terraform version
                         aws --version
                         kubectl --client=true version
-                        kops version
+                        #kops version
                         jq --version
                         
                         pushd ${HOME}
@@ -102,7 +102,7 @@ pipeline {
                 }
             }
         }
-                      
+
         stage('TF plan') {
             steps {
                 container('terraform') {
