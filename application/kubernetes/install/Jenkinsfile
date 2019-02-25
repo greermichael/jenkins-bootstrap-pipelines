@@ -1,9 +1,7 @@
 pipeline {
-    agent { label 'jenkins-terraform' }
     stages {
         stage('install required software') {
             steps {
-                container('terraform') {
                     withCustomEnv() {
                         sh '''#!/bin/bash -x
                         whoami
@@ -33,24 +31,21 @@ pipeline {
                         popd
                         '''
                     }
-                }
             }
         }
         stage('check AWS identity') {
             steps {
-                container('terraform') {
                     withCustomEnv() {
                         sh '''#!/bin/bash -x
                         aws sts get-caller-identity
                         '''
                     }
-                }
+
             }
         }
         
         stage('Git clone') {
             steps {
-                container('terraform') {
                     withCustomEnv() {
                         cleanWs()
                         sshagent(['bitbucket-key']) {
@@ -61,13 +56,11 @@ pipeline {
                             '''
                         }
                     }
-                }
             }
         }
 
         stage('TF init') {
             steps {
-                container('terraform') {
                     withCustomEnv() {
                         sshagent(['bitbucket-key']) {
                             sh '''#!/bin/bash -x
@@ -82,13 +75,11 @@ pipeline {
                             '''
                         }
                     }
-                }
             }
         }
 
         stage('Assume Cross-account role') {
             steps {
-                container('terraform') {
                     withCustomEnv() {
                         sshagent(['bitbucket-key']) {
                         sh '''#!/bin/bash -x
@@ -99,13 +90,12 @@ pipeline {
                         '''
                         }
                     }
-                }
+        
             }
         }
 
         stage('TF plan') {
             steps {
-                container('terraform') {
                     withCustomEnv() {
                         sshagent(['bitbucket-key']) {
                             sh '''#!/bin/bash -x
@@ -116,7 +106,7 @@ pipeline {
                             '''
                         }
                     }
-                }
+
             }
         }
 
@@ -127,7 +117,6 @@ pipeline {
                 ok "Yes, we should."
             }
             steps {
-                container('terraform') {
                     withCustomEnv() {
                         sshagent(['bitbucket-key']) {
                             sh '''#!/bin/bash -x
@@ -140,14 +129,13 @@ pipeline {
                             '''
                         }
                     }
-                }
+                
             }
         }
         
 
         stage('Collect artifacts') {
             steps {
-                container('terraform') {
                     withCustomEnv() {
                         sshagent(['bitbucket-key']) {
                             sh '''#!/bin/bash -x
@@ -155,7 +143,7 @@ pipeline {
                             pushd outputs
                             cp -r /home/jenkins/.ssh/ ./
                             mkdir .kube
-                            cp /home/jenkins/.kube/config ./kube/
+                            cp /home/jenkins/.kube/config ./kube/app_config
                             popd
                             ls -al outputs
                             #FIXME: consider generating kops state from s3 bucket and storying K8s instances ssh key in SSM to make artifacts immutable
@@ -163,7 +151,7 @@ pipeline {
                         }
                         archiveArtifacts artifacts: 'outputs/**'
                     }
-                }
+            
             }
         }
     }
