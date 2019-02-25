@@ -85,7 +85,24 @@ pipeline {
                 }
             }
         }
-                            
+
+        stage('Assume Cross-account role') {
+            steps {
+                container('terraform') {
+                    withCustomEnv() {
+                        sshagent(['bitbucket-key']) {
+                        sh '''#!/bin/bash -x
+                        assumed_role=$(aws sts assume-role --role-arn ${ROLE_ARN} --role-session-name cross-account-session)
+                        export AWS_ACCESS_KEY_ID=$(echo $assumed_role | jq -r .Credentials.AccessKeyId)
+                        export AWS_SECRET_ACCESS_KEY=$(echo $assumed_role | jq -r .Credentials.SecretAccessKey)
+                        export AWS_SESSION_TOKEN=$(echo $assumed_role | jq -r .Credentials.SessionToken)
+                        '''
+                        }
+                    }
+                }
+            }
+        }
+                      
         stage('TF plan') {
             steps {
                 container('terraform') {
