@@ -1,39 +1,23 @@
 pipeline {
     agent any
     stages {
-        stage('install required software') {
+
+        stage('Assume Cross-account role') {
             steps {
                     withCustomEnv() {
+                        sshagent(['bitbucket-key']) {
                         sh '''#!/bin/bash -x
-                        whoami
-                        pwd
-                        pip install awscli --upgrade
-                        
-                        #wget -O kops https://github.com/kubernetes/kops/releases/download/$(curl -s https://api.github.com/repos/kubernetes/kops/releases/latest | grep tag_name | cut -d '"' -f 4)/kops-linux-amd64
-                        #chmod +x ./kops
-                        #mv ./kops /usr/local/bin/
-                        
-                        yum --disableplugin=fastestmirror install -y jq
-                        
-                        ls -al /usr/local/bin
-                        terraform version
-                        aws --version
-                        kubectl --client=true version
-                        #kops version
-                        jq --version
-                        
-                        pushd ${HOME}
-                        if [ ! -d .ssh ];
-                        then
-                            mkdir -p .ssh
-                            chmod 700 .ssh
-                        fi
-                        ls -al .ssh
-                        popd
+                        assumed_role=$(aws sts assume-role --role-arn ${ROLE_ARN} --role-session-name cross-account-session)
+                        export AWS_ACCESS_KEY_ID=$(echo $assumed_role | jq -r .Credentials.AccessKeyId)
+                        export AWS_SECRET_ACCESS_KEY=$(echo $assumed_role | jq -r .Credentials.SecretAccessKey)
+                        export AWS_SESSION_TOKEN=$(echo $assumed_role | jq -r .Credentials.SessionToken)
                         '''
+                        }
                     }
+        
             }
         }
+        
         stage('check AWS identity') {
             steps {
                     withCustomEnv() {
@@ -76,22 +60,6 @@ pipeline {
                             '''
                         }
                     }
-            }
-        }
-
-        stage('Assume Cross-account role') {
-            steps {
-                    withCustomEnv() {
-                        sshagent(['bitbucket-key']) {
-                        sh '''#!/bin/bash -x
-                        assumed_role=$(aws sts assume-role --role-arn ${ROLE_ARN} --role-session-name cross-account-session)
-                        export AWS_ACCESS_KEY_ID=$(echo $assumed_role | jq -r .Credentials.AccessKeyId)
-                        export AWS_SECRET_ACCESS_KEY=$(echo $assumed_role | jq -r .Credentials.SecretAccessKey)
-                        export AWS_SESSION_TOKEN=$(echo $assumed_role | jq -r .Credentials.SessionToken)
-                        '''
-                        }
-                    }
-        
             }
         }
 
