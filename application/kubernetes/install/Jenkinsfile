@@ -1,24 +1,6 @@
 pipeline {
     agent any
     stages {
-
-        stage('check AWS identity') {
-            steps {
-                    withCustomEnv() {
-                        sh '''#!/bin/bash
-
-                        assumed_role=$(aws sts assume-role --role-arn ${CROSS_ACCOUNT_ROLE_ARN} --role-session-name cross-account-session)
-                        export AWS_ACCESS_KEY_ID=$(echo $assumed_role | jq -r .Credentials.AccessKeyId)
-                        export AWS_SECRET_ACCESS_KEY=$(echo $assumed_role | jq -r .Credentials.SecretAccessKey)
-                        export AWS_SESSION_TOKEN=$(echo $assumed_role | jq -r .Credentials.SessionToken)
-
-                        aws sts get-caller-identity
-                        '''
-                    }
-
-            }
-        }
-        
         stage('Git clone') {
             steps {
                     withCustomEnv() {
@@ -41,6 +23,11 @@ pipeline {
                             sh '''#!/bin/bash -x
                             pushd ${CONFIG_REPO_DIR}
                             pushd application/${AWS_REGION}/env
+
+                            assumed_role=$(aws sts assume-role --role-arn ${CROSS_ACCOUNT_ROLE_ARN} --role-session-name cross-account-session)
+                            export AWS_ACCESS_KEY_ID=$(echo $assumed_role | jq -r .Credentials.AccessKeyId)
+                            export AWS_SECRET_ACCESS_KEY=$(echo $assumed_role | jq -r .Credentials.SecretAccessKey)
+                            export AWS_SESSION_TOKEN=$(echo $assumed_role | jq -r .Credentials.SessionToken)
 
                             terraform init \
                                 -backend-config=\"region=${AWS_REGION}\" \
