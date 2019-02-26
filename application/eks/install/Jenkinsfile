@@ -15,7 +15,6 @@ pipeline {
             steps {
                 dir("application/$AWS_REGION/env") {
                     withProxyEnv() {
-                        withAWS(role: "$CROSS_ACCOUNT_ROLE_NAME", roleAccount: "$AWS_APPLICATION_ACCOUNT_NUMBER", roleSessionName: "$CROSS_ACCOUNT_ROLE_NAME-1") {
                             sshagent(['bitbucket-key']) {
                                 sh '''#!/bin/bash -x
                                 terraform init -input=false \
@@ -25,7 +24,6 @@ pipeline {
                                 -backend-config="key=tf/tf-aws-product-domain-${PRODUCT_DOMAIN_NAME}-env-${ENVIRONMENT_TYPE}/env/terraform.tfstate" \
                                  -backend-config=\"role_arn=arn:aws:iam::${AWS_APPLICATION_ACCOUNT_NUMBER}:role/${CROSS_ACCOUNT_ROLE_NAME}\"
                                 '''
-                            }
                         }
                     }
                 }
