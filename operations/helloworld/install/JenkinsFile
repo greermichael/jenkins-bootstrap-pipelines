@@ -4,39 +4,39 @@ def serviceConfig = '''
 apiVersion: v1
 kind: Service
 metadata:
-  name: k8s-python
+  name: helloworld-demo
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-internal: 0.0.0.0/
   labels:
-    app: k8s-python
-    name: k8s-python
+    app: helloworld-demo
+    name: helloworld-demo
 spec:
   type: LoadBalancer
   ports:
   - port: 8081
   selector:
-    app: k8s-python
+    app: helloworld-demo
 '''
 def deploymentConfig = '''
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: k8s-python
+  name: helloworld-demo
   labels:
-    app: k8s-python
+    app: helloworld-demo
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: k8s-python
+      app: helloworld-demo
   template:
     metadata:
       labels:
-        app: k8s-python
+        app: helloworld-demo
     spec:
       containers:
-      - name: k8s-python
-        image: 090011926616.dkr.ecr.us-east-1.amazonaws.com/demo_eks_python_webserver:latest
+      - name: helloworld-demo
+        image: 111860764813.dkr.ecr.us-east-1.amazonaws.com/helloworld:latest
         imagePullPolicy: "Always"
         resources:
           limits:
@@ -51,95 +51,42 @@ spec:
 pipeline {
     agent any
     stages {
-        stage('Git local config') {
+        stage('Retrieve kubeconfig') {
             steps {
-                sh 'git config --global --add user.name "example"'
-                sh 'git config --global --add user.email "example@example.com"'
-            }
-        }
-        stage('Git clone') {
-            steps {
-                cleanWs()
-                git credentialsId: 'bitbucket-key', url: '$CONFIG_REPO_URL'
+                withProxyEnv() {
+                    sh '''#!/bin/bash -x
+                    aws eks update-kubeconfig --name ${AWS_REGION}-${PRODUCT_DOMAIN_NAME}-${ENVIRONMENT_TYPE}-ops --region ${AWS_REGION}
+                    '''
+                }
             }
         }
         stage('Create Service') {
             steps {
-                dir("operations/$AWS_REGION/env") {
-                    withProxyEnv() {
-                        writeFile file: 'demo_service.yaml', text: serviceConfig
-                        sh 'kubectl create -f demo_service.yaml ||true'
-                    }
+                withProxyEnv() {
+                    writeFile file: 'demo_service.yaml', text: serviceConfig
+                    sh 'kubectl create -f demo_service.yaml ||true'
                 }
             }
         }
         stage('Create Deployment') {
             steps {
-                dir("operations/$AWS_REGION/env") {
-                    withProxyEnv() {
-                        writeFile file: 'demo_deployment.yaml', text: deploymentConfig
-                        sh 'kubectl create -f demo_deployment.yaml ||true'
-                    }
-                }
-            }
-        }
-
-        stage('Create application DNS record') {
-            steps {
-                dir("operations/$AWS_REGION/env") {
-                    withProxyEnv() {
-                        script {
-                            def parameters = readYaml file: 'jenkins/parameters.yaml'
-                            println "Getting domain name"
-                            def r53DomainName = sh(script: "aws route53 get-hosted-zone --id " + parameters.jxDomainHostedZoneID + " --output text --query 'HostedZone.Name'", 
-                                                   returnStdout: true).trim().replaceAll("\\.\$", "")
-                            r53fqdn = "helloworld" + "." + r53DomainName
-                            
-                            sleep 2
-                            
-                            println "Getting ingress NLB information"
-                            ingressNLBAddress = sh(script: "kubectl get service k8s-python -o json | jq -r '.status.loadBalancer.ingress[0].hostname'",
-                                                   returnStdout: true).trim()
-                            ingressNLBHostedZoneID = sh(script: "aws --region us-east-1 elb describe-load-balancers --output json | jq -r '.LoadBalancerDescriptions[0].CanonicalHostedZoneNameID'",
-                                                   returnStdout: true).trim()
-                            println "Generating record for DNS update"
-                            def r53RecordJSON = """
-                            {
-                                "Comment": "Creating Alias resource record sets in Route 53",
-                                "Changes": [{
-                                    "Action": "UPSERT",
-                                    "ResourceRecordSet": {
-                                        "Name": "${r53fqdn}",
-                                        "Type": "A",
-                                        "AliasTarget": {
-                                            "HostedZoneId": "${ingressNLBHostedZoneID}",
-                                            "DNSName": "dualstack.${ingressNLBAddress}",
-                                            "EvaluateTargetHealth": false
-                                        }
-                                    }
-                                }]
-                            }
-                            """
-                            writeFile file: 'r53_alias.json', text: r53RecordJSON
-                            sh "cat r53_alias.json"
-                            println "Creating/updating Route53 entry"
-                            sh "aws route53 change-resource-record-sets --hosted-zone-id " + parameters.jxDomainHostedZoneID + " --change-batch file://r53_alias.json"
-                        }
-                    }
+                withProxyEnv() {
+                    writeFile file: 'demo_deployment.yaml', text: deploymentConfig
+                    sh 'kubectl create -f demo_deployment.yaml ||true'
                 }
             }
         }
     }
 }
-void withProxyEnv(List envVars = [], def body) {
-    List proxies = []
+void withProxyEnv(List envVars = [],  def body) {
+    List proxies =[]
     List envVaraibles = ['GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no']
-    withAWSParameterStore(credentialsId: '', namePrefixes: '', naming: 'absolute', path: '/proxy', recursive: true, regionName: "$AWS_REGION") {
+    withAWSParameterStore(credentialsId: '', namePrefixes: '', naming: 'relative', path: "/$PRODUCT_DOMAIN_NAME/$ENVIRONMENT_TYPE", recursive: true, regionName: "$AWS_REGION") {
         script {
             if (env.PROXY_HTTP) {
                 proxies << "http_proxy=$PROXY_HTTP"
             }
-            if (env.PROXY_HTTPS) {
+            if (env.PROXY_HTTPs) {
                 proxies << "https_proxy=$PROXY_HTTPS"
             }
             if (env.PROXY_NO) {
@@ -149,6 +96,7 @@ void withProxyEnv(List envVars = [], def body) {
         }
     }
     envVaraibles.addAll(envVars)
+
     withEnv(envVaraibles) {
         body.call()
     }
