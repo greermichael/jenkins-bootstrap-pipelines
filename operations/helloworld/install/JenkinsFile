@@ -1,21 +1,27 @@
 #!groovy
 import groovy.json.JsonOutput
+
+def operationsAccountNumber = "111860764813"
+
+def hostZoneID = "Z1B1FPUN3WYRWQ"
+
 def serviceConfig = '''
 apiVersion: v1
 kind: Service
 metadata:
-  name: helloworld-demo
+  name: helloworld-demo-ingress
   annotations:
-    service.beta.kubernetes.io/aws-load-balancer-internal: 0.0.0.0/
-  labels:
-    app: helloworld-demo
-    name: helloworld-demo
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    service.beta.kubernetes.io/aws-load-balancer-internal: 0.0.0.0/0
 spec:
-  type: LoadBalancer
   ports:
-  - port: 8081
+  - name: http
+    port: 8081
+    protocol: TCP
+    targetPort: 8081
   selector:
     app: helloworld-demo
+  type: LoadBalancer
 '''
 def deploymentConfig = '''
 apiVersion: apps/v1
@@ -51,6 +57,16 @@ spec:
 pipeline {
     agent any
     stages {
+        stage('Get AWS account information') {
+            steps {
+                withProxyEnv() {
+                    script {
+                        operationsAccountNumber = sh script: "aws sts get-caller-identity --output text --query 'Account'", returnStdout: true
+                        println "Current AWS account number: ${operationsAccountNumber}"
+                    }
+                }
+            }
+        }
         stage('Retrieve kubeconfig') {
             steps {
                 withProxyEnv() {
